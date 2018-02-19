@@ -28,18 +28,19 @@ The __init__ function - takes twelve arguments:
 
 > **Implementation:** 
 
-> -- checking the validity of the given data by a function check_validity_of_data, following must hold:
+> 
+> - checking the validity of the given data by a function check_validity_of_data, following must hold:
  >> general size of matrices: 
  >![enter image description here](https://lh3.googleusercontent.com/qvX3mVPqOhcma_LnSqK4uZ-4olQnBYPfmI9X3TP7JBMmFyCNAHzjqJRqt7i7LzPGLi1u8XvFFXZd "general size of matrices")
 >>together with the sizes of l/u bounds, x and b:![enter image description here](https://lh3.googleusercontent.com/dAUwdfJjT0pZwB1_Hk_XngEUHih6wT4i1BBg5oWTiX5pJvAOXeFQMfFApVp-OaGmCUhViqbvmMvc "picture of sizes")
- -- lower and upper bounds can’t be infinity
- -- and for every number l in the lower bound vector and for every number u in the lower bound vector must hold that l<=u (for l,u in the same position)
 
->-- the logging level + format, self arguments as self.A, self.D, self.t, self.r, self.s etc. are being initialized
--- if any initial feasible solution was given, it is being set to self.current_solution; if there isn’t any, the initial feasible solution will be computed by the find_init_feasible_solution function later
--- graver complexity is  being computed and set to self.graver_complexity by a function approximate_graver_complexity, or exact_graver_complexity, or only the value is being applied (according to the graver_complexity option)
--- ZE to self.ZE is being set through a function _construct_ZE (only if experimental == false)
--- checking the validity of the data (whether the sizes of matrices, l/u bounds etc. make sense
+> - lower and upper bounds can’t be infinity
+> - and for every number l in the lower bound vector and for every number u in the lower bound vector must hold that l<=u (for l,u in the same position)
+>- the logging level + format, self arguments as self.A, self.D, self.t, self.r, self.s etc. are being initialized
+>- if any initial feasible solution was given, it is being set to self.current_solution; if there isn’t any, the initial feasible solution will be computed by the find_init_feasible_solution function later
+>- graver complexity is  being computed and set to self.graver_complexity by a function approximate_graver_complexity, or exact_graver_complexity, or only the value is being applied (according to the graver_complexity option)
+>- ZE to self.ZE is being set through a function ``_construct_ZE`` (only if ``experimental == false``)
+>- checking the validity of the data (whether the sizes of matrices, l/u bounds etc. make sense
 
 Two functions for computing the graver complexity of given matrix (at most one of these is chosen according to the tenth (graver_complexity) argument in the __init__ function):
 
@@ -52,12 +53,14 @@ Two functions for computing the graver complexity of given matrix (at most one o
 >**Implementation**:
 
 
->-- computes graver complexity according to the following formula [2]
+>
+>- computes graver complexity according to the following formula [2]
 $$g(A)\leq p(r*|| D*GA||_{\infty})^{r} $$
 where:
->> -- g(A) is the graver  complexity of matrix A
--- p is the number of elements in the graver basis of A
--- GA is the graver basis of A
+>> 
+>>- g(A) is the graver  complexity of matrix A
+>>- p is the number of elements in the graver basis of A
+>>- GA is the graver basis of A
 
 Function for computing Z(E) - **construct_ZE**. Z(E) is the sum of at most Graver complexity elements of the matrix D. This function is also called from the __init__ function.
 
@@ -68,7 +71,7 @@ etc...
 
 ## SOURCES:
 
-[1] R. Hammecke, S. Onn and L. Romanchuk, “N-fold integer programming in cubic time,” Mathematical Programming, pp. 1-17, 2013. 
+[1] R. Hemmecke, S. Onn and L. Romanchuk, “N-fold integer programming in cubic time,” Mathematical Programming, pp. 1-17, 2013. 
 
 [2] S. Onn, Nonlinear discrete optimization, Zurich Lectures in Advanced Mathematics, European Mathematical Society, 2010. 
 

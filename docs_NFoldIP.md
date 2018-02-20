@@ -7,7 +7,7 @@ The ``_find_good_step`` procedure is implemented using the dynamic programming a
 
 All of the important implemented functions are described below.
 
-The code was written in Python/Cython as a SageMath's module using the package 4ti2 -- a software package for algebraic, geometric and combinatorial problems on linear spaces. Available at www.4ti2.de. 
+The code was written in Python/Cython as a SageMath's module using the package 4ti2 &mdash; a software package for algebraic, geometric and combinatorial problems on linear spaces. Available at www.4ti2.de. 
 
 
 ## IMPLEMENTATION - functions:
@@ -72,7 +72,7 @@ Function for computing Z(E) - **construct_ZE**. Z(E) is the sum of at most Grave
 >- then in a three inner for cycles happen following:
 >>- 1st cycle:   graver complexity times new empty set is created
 >>- 2nd cycle:   depending on the size of yet computed unique elements of ZE
->>- 3rd cycle:   two vectors are computed (graver complexity times) – it’s a sum/difference of one vector from yet computed ZE with a vector from graver basis of ``A``
+>>- 3rd cycle:   two vectors are computed (graver complexity times) &mdash; it’s a sum/difference of one vector from yet computed ZE with a vector from graver basis of ``A``
 
 
 Finding feasible solution - ``find_init_feasible_solution``. It computes the initial solution if it has not been given in the ``__init__`` function. It consists of two methods - **create_auxiliary_program**, which creates the instance of an auxiliary program. Then there is a method for solving the aux instance - **solve_auxiliary_program**.
@@ -100,7 +100,7 @@ Finding feasible solution - ``find_init_feasible_solution``. It computes the ini
 >**Implementation (**``solve_auxiliary_program``**):**
 >- its argument is an auxiliary instance of NFoldIP with its initial solution
 >- uses the algorithm to minimize the auxiliary variables in order to have the initial solution for the main program
->- then it checks whether the auxiliary vars are zero -- if yes, we have an initial feasible solution (returns the init feasible solution), otherwise the main program has no feasible solution (returns None)
+>- then it checks whether the auxiliary vars are zero &mdash; if yes, we have an initial feasible solution (returns the init feasible solution), otherwise the main program has no feasible solution (returns None)
 
 
 If the initial feasible solution exists we are searching for the augmenting steps by the function **find_graverbest_step**.
@@ -144,7 +144,7 @@ The second option for solving calls the function **glpk_solve**. This function b
 
 ## SOURCES:
 
-[1] R. Hemmecke, S. Onn and L. Romanchuk, “N-fold integer programming in cubic time,” Mathematical Programming, pp. 1-17, 2013. 
+[1] R. Hemmecke, S. Onn and L. Romanchuk, “N-fold integer programming in cubic time,” Mathematical Programming, pp. 1&ndash;17, 2013. 
 
 [2] S. Onn, Nonlinear discrete optimization, Zurich Lectures in Advanced Mathematics, European Mathematical Society, 2010. 
 

@@ -40,11 +40,11 @@ The ``__init__`` function - takes these arguments:
 >>together with the sizes of l/u bounds, x and b:![enter image description here](https://lh3.googleusercontent.com/dAUwdfJjT0pZwB1_Hk_XngEUHih6wT4i1BBg5oWTiX5pJvAOXeFQMfFApVp-OaGmCUhViqbvmMvc "picture of sizes")
 
 > - lower and upper bounds can’t be infinity
-> - and for every number l in the lower bound vector and for every number u in the lower bound vector must hold that l<=u (for l,u in the same position)
->- the logging level + format, self arguments as self.A, self.D, self.t, self.r, self.s etc. are being initialized
+> - and for every number l in the lower bound vector and for every number u in the upper bound vector must hold that l<=u (for l,u in the same position)
+>- the logging level + format, self arguments such as self.A, self.D, self.t, self.r, self.s etc. are being initialized
 >- if any initial feasible solution was given, it is being set to self.current_solution; if there isn’t any, the initial feasible solution will be computed by the find_init_feasible_solution function later
 >- graver complexity is  being computed and set to self.graver_complexity by a function approximate_graver_complexity, or exact_graver_complexity, or only the value is being applied (according to the graver_complexity option)
->- ZE to self.ZE is being set through a function ``_construct_ZE`` (only if ``experimental == false``)
+>- ZE to self.ZE is being set through the function ``_construct_ZE`` (only if ``experimental == false``)
 >- checking the validity of the data (whether the sizes of matrices, l/u bounds etc. make sense
 
 Two functions for computing the graver complexity of given matrix (at most one of these is chosen according to the tenth (graver_complexity) argument in the __init__ function):
@@ -66,7 +66,7 @@ where:
 >>- p is the number of elements in the graver basis of A
 >>- GA is the graver basis of A
 
-Function for computing Z(E) - **construct_ZE**. Z(E) is the sum of at most Graver complexity elements of the matrix D. This function is also called from the ``__init__`` function.
+Function for computing Z(E) - **construct_ZE**. Z(E) is the sum of at most Graver complexity elements of the matrix A. This function is also called from the ``__init__`` function.
 >**Implementation**
 >- at first creates vector of zeros (it is definitely in ZE) 
 >- then in a three inner for cycles happen following:
@@ -75,7 +75,7 @@ Function for computing Z(E) - **construct_ZE**. Z(E) is the sum of at most Grave
 >>- 3rd cycle:   two vectors are computed (graver complexity times) – it’s a sum/difference of one vector from yet computed ZE with a vector from graver basis of ``A``
 
 
-Finding feasible solution - ``find_init_feasible_solution``. It computes the initial solution if it has not been given in the ``__init__`` function. It consists of two methods - ``create_auxiliary_program``, which creates the instance of an auxiliary program. Then there is a method for solving the aux instance - ``solve_auxiliary_program``.
+Finding feasible solution - ``find_init_feasible_solution``. It computes the initial solution if it has not been given in the ``__init__`` function. It consists of two methods - **create_auxiliary_program**, which creates the instance of an auxiliary program. Then there is a method for solving the aux instance - **solve_auxiliary_program**.
 
 
 >**Implementation  (**``create_auxiliary_program``**)**:
@@ -103,7 +103,7 @@ Finding feasible solution - ``find_init_feasible_solution``. It computes the ini
 >- then it checks whether the auxiliary vars are zero -- if yes, we have an initial feasible solution (returns the init feasible solution), otherwise the main program has no feasible solution (returns None)
 
 
-If the initial feasible solution exists we are searching for the augmenting steps by the function ``find_graverbest_step``.
+If the initial feasible solution exists we are searching for the augmenting steps by the function **find_graverbest_step**.
 
 >**Implementation:**
 >- at the beginning the generator of Gamma of gammas has to be computed (see the function ``construct_Gamma below``)
@@ -112,17 +112,17 @@ If the initial feasible solution exists we are searching for the augmenting step
 >>>- try to take bigger gamma in order to prolong the good step
 >- at the end the function returns the maximum step, which is ``gamma*good_step`` with the best dot product with corresponding ``w``
 
-Now there is a short look into the construction of Gamma - ``construct_Gamma``. It is an iterator of gammas for possible extension of the lengths of the feasible steps. It is used in the ``find_graverbest_step`` function as it has been mentioned before.
+Now there is a short look into the construction of Gamma - **construct_Gamma**. It is an iterator of gammas for possible extension of the lengths of the feasible steps. It is used in the ``find_graverbest_step`` function as it has been mentioned before.
 
 >**Implementation:**
 
 >- it is an iterator of logarithmic values
 >- it makes a vector of the difference from upper-lower bounds, chooses the biggest element of the difference, the max value which this iterator returns is the number ``n``(floor) for which holds following:
->>-$$n^{r} = max_value$$
+>>- $$n^{r} = max_value$$
 >- the first value is 1, every next value is two times the previous value if it is lower than the ``max_value``, otherwise ``StopIteration`` is raised
 
 
-There is the option not to use ``find_good_step(gamma)``, but its experimental version - ``find_good_step_ecperimental(gamma, time limit)``.
+There is the option not to use ``find_good_step(gamma)``, but its experimental version - **find_good_step_ecperimental(gamma, time limit)**.
 >**Implementation:**
 >- TODO
 
@@ -130,11 +130,11 @@ And finally the crucial function for solving a given n-fold program: ``solve(“
 - if ``"native"``, it uses the ``find_graverbest_step`` to compute the solution 
 - if ``“GLPK”`` it creates a MILP instance and solves it with GLPK 
 
-If we choose the native solver the function ``native_solve`` is called. It solves the given problem with the implemented algorithm.
+If we choose the native solver the function **native_solve** is called. It solves the given problem with the implemented algorithm.
 >**Implementation:**
 >- it finds and applies the graver best steps by the function ``find_graverbest_step`` until there are no more graver best steps
 
-The second option for solving calls the function ``glpk_solve``. This function builds MILP in a standard form and uses GLPK for solving the problem.
+The second option for solving calls the function **glpk_solve**. This function builds MILP in a standard form and uses GLPK for solving the problem.
 >**Implementation:**
 >- sets ``maximization = False``, add new nonnegative variable ``d``
 >- builds the form of ``Ad=b``, $$d≥0$$

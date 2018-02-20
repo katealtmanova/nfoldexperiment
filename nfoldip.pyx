@@ -270,7 +270,7 @@ class NFoldIP(SageObject):
     
     def _construct_ZE(self):
         """
-        Construct ZE - the sum of at most Graver complexity elements of the matrix D.
+        Construct ZE - the sum of at most Graver complexity elements of the matrix A.
         """
         self.NFoldLogging.debug('COMPUTING ZE:')
         #self.NFoldLogging.fairytale('I HAVE FOUND OUT FOLLOWING VECTORS (not every is unique): ')

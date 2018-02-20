@@ -1,5 +1,9 @@
 # NFoldIP technical documentation
-This program enables creating an instance of integer n-fold programming problem. In the initialization function the properties for solver can be chosen (see the description of the __init__ function below). Then the instance can be solved in O(n3) time using dynamic programming. And that is not the only way the problem could be solved. There is also an option to use the standard GLPK solver (see the function solve below) or an experimental solver which uses MILP and runs faster than the solver using dynamic programming. 
+We provide a class to handle instances of n-fold integer programming.
+Most configuration is done via the arguments of the ``__init__`` function (see below).
+The majority of computational work is done in the ``_find_good_step`` function, which searches for a good augmenting step of a specified length.
+The algorithm computes such a step for each step-length from a set of step-lengths Gamma and then uses the best of these to augment the current solution; it terminates when no further augmenting steps can be found.
+The ``_find_good_step`` procedure is implemented using the dynamic programming approach of [1]; because of its poor performance it can also be solved as an ILP subproblem, which is solved using a MILP solver such as GLPK, Coin-OR or Gurobi; see the function ``solve``. 
 
 All of the important implemented functions are described below.
 
@@ -7,24 +11,25 @@ The code was written in Python/Cython as a SageMath's module using the package 4
 
 
 ## IMPLEMENTATION - functions:
-The __init__ function - takes twelve arguments:
+The ``__init__`` function - takes these arguments:
 
- 1. self 
- 2. A - diagonal matrix (vectors of machines when scheduling)
- 3. D - upper matrix (matrix of jobs when scheduling) 
- 4. n - (number of jobs when scheduling)
- 5. b -right hand-side vector 
- 6. l - lower bound 
- 7. u - upper bound 
- 8. w - objective function 
- 9. verbose - the identifier of logging, standard system of
-    loggers - notset, debug, info, warning, error, critical (see
-    https://docs.python.org/2/library/logging.html ), not obligatory,
-    default is set to error level
- 10. graver_complexity - possible values are: “exact” - counts the value of graver complexity from the definition, “approximate” - returns an approximate value own integer value 
- 11. current_solution - not obligatory, if no current solution is given, the algorithm counts the initial solution from an auxiliary, program, 
- 12. experimental - boolean value, the false option uses a dynamic program, true for an experimental algorithm which uses MILP
-
+ 1. ``self`` 
+ 2. ``A`` - diagonal matrix (vectors of machines when scheduling)
+ 3. ``D`` - upper matrix (matrix of jobs when scheduling) 
+ 4. ``n`` - (number of jobs when scheduling)
+ 5. ``b`` -right hand-side vector 
+ 6. ``l`` - lower bound 
+ 7. ``u`` - upper bound 
+ 8. ``w`` - objective function 
+ 9. ``verbose`` - the identifier of logging, standard system of
+    loggers - ``notset``, ``debug``, ``info``, ``warning``, ``error`` (default), ``critical`` (see
+    https://docs.python.org/2/library/logging.html ), optional.
+ 10. ``graver_complexity`` - possible values are: ``“exact”`` - computes the value of Graver complexity from the definition, ``“approximate”`` (default) - computes an upper bound using a formula, integer - user-input; turns the algorithm into a heuristic
+ 11. ``current_solution`` - optional, if no current solution is given, the algorithm computes the initial solution using an auxiliary instance, 
+ 12. ``experimental`` - optional, ``False`` (default) uses dynamic programming (slow), ``True`` uses a MILP solver to solve a subinstance equivalent to the DP, ``"ng1"`` uses a MILP solver to find augmenting steps with 1-norm bounded by ``graver_complexity``, ``"nginfty"`` uses a MILP solver to find augmenting steps with \infty-norm bounded by ``graver_complexity``.
+ 13. ``instancename`` - optional, a string which will be used for output file logging, defaults to ``"instancename"``
+ 14. ``gamma`` - optional, a string, ``"best"`` uses the "best step" augmentation strategy, ``"logarithmic"`` (default) uses the "approximate best step" augmentation strategy, ``"unit"`` uses the "any step" augmentation strategy,
+ 15. ``solver`` - optional, a string, determines which MILP solver to use if ``experimental is not False``, ``"GLPK"`` (default), ``"Coin"``, ``"Gurobi"``.
 
 > **Implementation:** 
 

@@ -72,38 +72,74 @@ Function for computing Z(E) - **construct_ZE**. Z(E) is the sum of at most Grave
 >- then in a three inner for cycles happen following:
 >>- 1st cycle:   graver complexity times new empty set is created
 >>- 2nd cycle:   depending on the size of yet computed unique elements of ZE
->>- 3rd cycle:   two vectors are computed (graver complexity times) – it’s a sum/difference of one vector from yet computed ZE with a vector from graver basis of A
+>>- 3rd cycle:   two vectors are computed (graver complexity times) – it’s a sum/difference of one vector from yet computed ZE with a vector from graver basis of ``A``
 
 
 Finding feasible solution - ``find_init_feasible_solution``. It computes the initial solution if it has not been given in the ``__init__`` function. It consists of two methods - ``create_auxiliary_program``, which creates the instance of an auxiliary program. Then there is a method for solving the aux instance - ``solve_auxiliary_program``.
 
 
->**Implementation  (create_auxiliary_program)**:
+>**Implementation  (**``create_auxiliary_program``**)**:
 
 >- at first it constructs two matrices:
 >>- $$D_{2} = [D Z_{sr} Z_{sr} I_{s} -I_{s}]$$
 >>- $$A_{2} = [A I_{r} -I_{r} Z_{rs} Z_{rs}]$$
->>>- where $$M_{ab}$$ means a matrix of a rows and b columns, $$I$$ is an identity matrix, $$Z$$ is a matrix full of zeros
+>>>- where $$M_{ab}$$ means a matrix of $$a$$ rows and $$b$$ columns, $$I$$ is an identity matrix, $$Z$$ is a matrix full of zeros
 >- then then it computes new lower and upper bounds:
 >>- lower bound vector consists of $$(t+2*r+2*s)*n$$ zeros
->>- upper bound vector consist of $$(t+2*r+2*s)*n$$ times the max value in the self.b vector
+>>- upper bound vector consist of $$(t+2*r+2*s)*n$$ times the max value in the ``self.b`` vector
 >- creates new objective function:
->>- it consist of a vector of t times zero and $$2*r+2*s$$ times one which is n-times copied
+>>- it consist of a vector of $$t$$ times zero and $$2*r+2*s$$ times one which is n-times copied
 >- makes the initial feasible solution of the auxiliary program
 >>- the vector of the initial feasible solution consists of 2 types of vectors:
 >>>- the first type has $$t+2r+2s$$ numbers and each number is a value from the lower vector (on the corresponding position) if it’s not minus infinity, elif it’s a value from the upper bound vector if it’s not an infinity, elif it is zero; then is this vector filled with positive numbers form the $$b[0]$$ vector (or zeros when not positive), then the negative numbers from the $$b[0]$$ vector (or zeros when not negative) and the same with the $$b[1]$$ vector (positive and negative part)
 >>>- the second type of the vector of the init feasible solution is actually the same as the first type but the first part is different, there are only zeros
->>>-note: the vector $$b$$ consists of two parts - one corresponds to the $$D$$ matrix, the second part corresponds to the $$A$$ matrix
+>>>-note: the vector ``b`` consists of two parts - one corresponds to the ``D`` matrix, the second part corresponds to the ``A`` matrix
 >- finally it returns an instance of NFoldIP
 
 
->-**Implementation (solve_auxiliary_program)**
+>**Implementation (**``solve_auxiliary_program``**):**
 >- its argument is an auxiliary instance of NFoldIP with its initial solution
 >- uses the algorithm to minimize the auxiliary variables in order to have the initial solution for the main program
 >- then it checks whether the auxiliary vars are zero -- if yes, we have an initial feasible solution (returns the init feasible solution), otherwise the main program has no feasible solution (returns None)
 
 
-etc...
+If the initial feasible solution exists we are searching for the augmenting steps by the function ``find_graverbest_step``.
+
+>**Implementation:**
+>- at the beginning the generator of Gamma of gammas has to be computed (see the function ``construct_Gamma below``)
+>- then for the gamma in Gamma:
+>> while the dot product of vector ``w`` with the ``good_step`` (which was computed from the ``_find_good_step(gamma)`` function) is not greater or equal to zero:
+>>>- try to take bigger gamma in order to prolong the good step
+>- at the end the function returns the maximum step, which is ``gamma*good_step`` with the best dot product with corresponding ``w``
+
+Now there is a short look into the construction of Gamma - ``construct_Gamma``. It is an iterator of gammas for possible extension of the lengths of the feasible steps. It is used in the ``find_graverbest_step`` function as it has been mentioned before.
+
+>**Implementation:**
+
+>- it is an iterator of logarithmic values
+>- it makes a vector of the difference from upper-lower bounds, chooses the biggest element of the difference, the max value which this iterator returns is the number ``n``(floor) for which holds following:
+>>-$$n^{r} = max_value$$
+>- the first value is 1, every next value is two times the previous value if it is lower than the ``max_value``, otherwise ``StopIteration`` is raised
+
+
+There is the option not to use ``find_good_step(gamma)``, but its experimental version - ``find_good_step_ecperimental(gamma, time limit)``.
+>**Implementation:**
+>- TODO
+
+And finally the crucial function for solving a given n-fold program: ``solve(“solver”)``. It takes one argument which says which solver should be used. 
+- if ``"native"``, it uses the ``find_graverbest_step`` to compute the solution 
+- if ``“GLPK”`` it creates a MILP instance and solves it with GLPK 
+
+If we choose the native solver the function ``native_solve`` is called. It solves the given problem with the implemented algorithm.
+>**Implementation:**
+>- it finds and applies the graver best steps by the function ``find_graverbest_step`` until there are no more graver best steps
+
+The second option for solving calls the function ``glpk_solve``. This function builds MILP in a standard form and uses GLPK for solving the problem.
+>**Implementation:**
+>- sets ``maximization = False``, add new nonnegative variable ``d``
+>- builds the form of ``Ad=b``, $$d≥0$$
+>- and minimizes ``wd``
+>- it does not respect any initial solution if given at the beginning 
 
 
 ## SOURCES:

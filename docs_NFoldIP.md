@@ -81,19 +81,19 @@ Finding feasible solution - ``find_init_feasible_solution``. It computes the ini
 >**Implementation  (create_auxiliary_program)**:
 
 >- at first it constructs two matrices:
->>- $D_{2} = [D Z_{sr} Z_{sr} I_{s} -I_{s}]$
->>- $A_{2} = [A I_{r} -I_{r} Z_{rs} Z_{rs}]$
->>>- where $M_{ab}$ means a matrix of a rows and b columns, I is an identity matrix, Z is a matrix full of zeros
+>>- $$D_{2} = [D Z_{sr} Z_{sr} I_{s} -I_{s}]$$
+>>- $$A_{2} = [A I_{r} -I_{r} Z_{rs} Z_{rs}]$$
+>>>- where $$M_{ab}$$ means a matrix of a rows and b columns, $$I$$ is an identity matrix, $$Z$$ is a matrix full of zeros
 >- then then it computes new lower and upper bounds:
->>- lower bound vector consists of $(t+2*r+2*s)*n$ zeros
->>- upper bound vector consist of $(t+2*r+2*s)*n$ times the max value in the self.b vector
+>>- lower bound vector consists of $$(t+2*r+2*s)*n$$ zeros
+>>- upper bound vector consist of $$(t+2*r+2*s)*n$$ times the max value in the self.b vector
 >- creates new objective function:
->>- it consist of a vector of t times zero and $2*r+2*s$ times one which is n-times copied
+>>- it consist of a vector of t times zero and $$2*r+2*s$$ times one which is n-times copied
 >- makes the initial feasible solution of the auxiliary program
 >>- the vector of the initial feasible solution consists of 2 types of vectors:
->>>- the first type has t+2r+2s numbers and each number is a value from the lower vector (on the corresponding position) if it’s not minus infinity, elif it’s a value from the upper bound vector if it’s not an infinity, elif it is zero; then is this vector filled with positive numbers form the b[0] vector (or zeros when not positive), then the negative numbers from the b[0] vector (or zeros when not negative) and the same with the b[1] vector (positive and negative part)
+>>>- the first type has $$t+2r+2s$$ numbers and each number is a value from the lower vector (on the corresponding position) if it’s not minus infinity, elif it’s a value from the upper bound vector if it’s not an infinity, elif it is zero; then is this vector filled with positive numbers form the $$b[0]$$ vector (or zeros when not positive), then the negative numbers from the $$b[0]$$ vector (or zeros when not negative) and the same with the $$b[1]$$ vector (positive and negative part)
 >>>- the second type of the vector of the init feasible solution is actually the same as the first type but the first part is different, there are only zeros
->>>-note: the vector b consists of two parts - one corresponds to the D matrix, the second part corresponds to the A matrix
+>>>-note: the vector $$b$$ consists of two parts - one corresponds to the $$D$$ matrix, the second part corresponds to the $$A$$ matrix
 >- finally it returns an instance of NFoldIP
 
 

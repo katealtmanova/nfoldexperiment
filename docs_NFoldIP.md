@@ -57,7 +57,6 @@ Two functions for computing the graver complexity of given matrix (at most one o
 **approximate_graver_complexity** return an approximate value of the Graver complexity of the given matrices
 >**Implementation**:
 
-
 >
 >- computes graver complexity according to the following formula [2]
 $$g(A)\leq p(r*|| D*GA||_{\infty})^{r} $$
@@ -67,9 +66,42 @@ where:
 >>- p is the number of elements in the graver basis of A
 >>- GA is the graver basis of A
 
-Function for computing Z(E) - **construct_ZE**. Z(E) is the sum of at most Graver complexity elements of the matrix D. This function is also called from the __init__ function.
+Function for computing Z(E) - **construct_ZE**. Z(E) is the sum of at most Graver complexity elements of the matrix D. This function is also called from the ``__init__`` function.
+>**Implementation**
+>- at first creates vector of zeros (it is definitely in ZE) 
+>- then in a three inner for cycles happen following:
+>>- 1st cycle:   graver complexity times new empty set is created
+>>- 2nd cycle:   depending on the size of yet computed unique elements of ZE
+>>- 3rd cycle:   two vectors are computed (graver complexity times) – it’s a sum/difference of one vector from yet computed ZE with a vector from graver basis of A
 
->Implementation:
+
+Finding feasible solution - ``find_init_feasible_solution``. It computes the initial solution if it has not been given in the ``__init__`` function. It consists of two methods - ``create_auxiliary_program``, which creates the instance of an auxiliary program. Then there is a method for solving the aux instance - ``solve_auxiliary_program``.
+
+
+>**Implementation  (create_auxiliary_program)**:
+
+>- at first it constructs two matrices:
+>>- $D_{2} = [D Z_{sr} Z_{sr} I_{s} -I_{s}]$
+>>- $A_{2} = [A I_{r} -I_{r} Z_{rs} Z_{rs}]$
+>>>- where $M_{ab}$ means a matrix of a rows and b columns, I is an identity matrix, Z is a matrix full of zeros
+>- then then it computes new lower and upper bounds:
+>>- lower bound vector consists of $(t+2*r+2*s)*n$ zeros
+>>- upper bound vector consist of $(t+2*r+2*s)*n$ times the max value in the self.b vector
+>- creates new objective function:
+>>- it consist of a vector of t times zero and $2*r+2*s$ times one which is n-times copied
+>- makes the initial feasible solution of the auxiliary program
+>>- the vector of the initial feasible solution consists of 2 types of vectors:
+>>>- the first type has t+2r+2s numbers and each number is a value from the lower vector (on the corresponding position) if it’s not minus infinity, elif it’s a value from the upper bound vector if it’s not an infinity, elif it is zero; then is this vector filled with positive numbers form the b[0] vector (or zeros when not positive), then the negative numbers from the b[0] vector (or zeros when not negative) and the same with the b[1] vector (positive and negative part)
+>>>- the second type of the vector of the init feasible solution is actually the same as the first type but the first part is different, there are only zeros
+>>>-note: the vector b consists of two parts - one corresponds to the D matrix, the second part corresponds to the A matrix
+>- finally it returns an instance of NFoldIP
+
+
+>-**Implementation (solve_auxiliary_program)**
+>- its argument is an auxiliary instance of NFoldIP with its initial solution
+>- uses the algorithm to minimize the auxiliary variables in order to have the initial solution for the main program
+>- then it checks whether the auxiliary vars are zero -- if yes, we have an initial feasible solution (returns the init feasible solution), otherwise the main program has no feasible solution (returns None)
+
 
 etc...
 

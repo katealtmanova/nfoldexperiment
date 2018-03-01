@@ -52,7 +52,7 @@ class construct_Gamma_iterator:
         self.num_of_iterations = self.num_of_iterations +1
         
         if self.num_of_iterations > self.logarithm:
-            raise StopIteration #pokud bude problematicke pracovat s exception, klidne vratit tady -1 nebo jiny podobny marker
+            raise StopIteration
         self.last = last_gamma * 2
         return last_gamma
 
@@ -246,13 +246,12 @@ class NFoldIP(SageObject):
         Construct ZE - the sum of at most Graver complexity elements of the matrix D using itertools.
         """
         #start = time.time() 
-        #nejprve se v GA museji zdvojit vysledky (prenasobit minus jednickou vsechno)
         GA2 = []
         for i in self.GA:
             GA2.append(i)
             GA2.append(-i)
         
-        #pridat nulovy vektor
+        #add zero-vector
         GA2.append(vector((0,)*self.t))
         
         R = set()
@@ -273,7 +272,6 @@ class NFoldIP(SageObject):
         Construct ZE - the sum of at most Graver complexity elements of the matrix A.
         """
         self.NFoldLogging.debug('COMPUTING ZE:')
-        #self.NFoldLogging.fairytale('I HAVE FOUND OUT FOLLOWING VECTORS (not every is unique): ')
         vector0 = vector((0,)*self.t)
         vector0.set_immutable()
         count = 0
@@ -287,7 +285,6 @@ class NFoldIP(SageObject):
                     z2 = x-y
                     z1.set_immutable()
                     z2.set_immutable()
-                    #self.NFoldLogging.fairytale('vector z1: {}, vector z2:{}'.format(z1,z2))
                     if z1 not in R:
                         self.NFoldLogging.debug('new unique vector: {}'.format(z1))
                     R_new.add(z1)
@@ -314,7 +311,7 @@ class NFoldIP(SageObject):
             current = []
                 
             for h in self.ZE:
-                best_val = float('inf')  # int??
+                best_val = float('inf') 
                 best_path = []
                 if (i == self.n-1) and (self.D*h != vector((0,)*self.r)):
                     continue
@@ -335,7 +332,7 @@ class NFoldIP(SageObject):
     
                 v = vector(h)
                 v.set_immutable()
-                #pokud h neni dosazitelny, pak best_path neni inicializovane
+                #if h unreachable, best_path has not been initialized
                 if best_val != float('inf'):
                     best_path.append(h)
                     current.append((v, best_path, best_val)) #(tuple([v, best_path, best_val]))
@@ -697,14 +694,8 @@ class NFoldIP(SageObject):
         """
         Prepares and returns instance for GLPK.
         """
-        
         #new A^(n) matrix 
         new_A_matrix = self.create_An_matrix()
-        #print
-        #for v in new_A_matrix:
-        #    print v
-        #print
-        #print('len of A_matrix= {}'.format(len(new_A_matrix)))
         
         #initialization of MILP
         nameOfMilp = "milp"
@@ -831,7 +822,7 @@ class NFoldIP(SageObject):
         """
         Creates and solves auxiliary_program.
         """
-        self.solve_auxiliary_program(self.create_auxiliary_program())
+        return self.solve_auxiliary_program(self.create_auxiliary_program())
             
     def create_auxiliary_program(self):
         """
@@ -845,13 +836,21 @@ class NFoldIP(SageObject):
         self.NFoldLogging.info('Has new D = {}, and new A = {}'.format(D2,A2))
         
         #bounds
-        l2 = [vector((0,)*(self.t + (2*self.s) + (2*self.r)))]*self.n
         max_in_b = 0 #and b should not contain infinity
         for vect in self.b:
             for v in vect:
                 if max_in_b<abs(v):
                     max_in_b = abs(v)
-        u2 = [vector((max_in_b,)*(self.t + (2*self.s) + (2*self.r)))]*self.n    
+           
+        l22 = [self.l[0][i] for i in range(self.t)]
+        for i in range((2*self.s) + (2*self.r)):
+            l22.append(0)
+        l2 = [vector((l22))]*self.n
+           
+        u22 = [self.u[0][i] for i in range(self.t)]
+        for i in range((2*self.s) + (2*self.r)):
+            u22.append(max_in_b)
+        u2 = [vector((u22))]*self.n
         self.NFoldLogging.info('Has new l,u bounds. l = {}, u= {}'.format(l2,u2)) 
         
         #objective function
@@ -880,6 +879,23 @@ class NFoldIP(SageObject):
         
         return auxiliary_program
         
+    def _erase_last_2rs_zeros(self,oldv):
+        """
+        Just cut off the last 2rs zeros.
+        """
+        final_vector = []
+        nev = []
+        
+        for i in range(self.n):
+            control = 0
+            for aa in oldv[i]:
+                nev.append(aa)
+                control+=1
+                if(control>=self.t):
+                    final_vector+= [vector((nev))]
+                    nev = []
+                    break 
+        return final_vector
         
     def solve_auxiliary_program(self,auxiliary_instance):      
         """
@@ -904,9 +920,9 @@ class NFoldIP(SageObject):
                     break
         
         if bool_break == 0:        
-            init_feas_solution = auxiliary_instance.current_solution
-            print ("init_feas_solution: {}".format(init_feas_solution))
-            return init_feas_solution    
+            init_feas_solution = self._erase_last_2rs_zeros(auxiliary_instance.current_solution) 
+            print ("init_feas_solution: {}".format(init_feas_solution))       
+            return init_feas_solution   
         
         
         else:

@@ -38,4 +38,7 @@ The values of the parameter g1 were {2,3,4,5,6,7,8,9,10,12,14,16,18,20,23,26,29,
 - [Ratio 0.65](./jupyter/graphing-longer_jobs-65-inner.ipynb)
 
 
-Authors supported by the project NFR MULTIVAL and the project P202/12/G061 of GA ČR, also by Technion postdoctoral fellowship and by the Student Faculty Grant "EXPERIMENTÁLNÍ ANALÝZA POKROČILÉHO ALGORITMU PRO N-FOLD IP". 
+__Acknowledgement.__
+Kateřina Altmannová is supported by the Student Faculty Grant "EXPERIMENTÁLNÍ ANALÝZA POKROČILÉHO ALGORITMU PRO N-FOLD IP". 
+Dušan Knop is supported by projects NFR MULTIVAL and P202/12/G061 of GA ČR.
+Martin Koutecký is supported by Technion postdoctoral fellowship.

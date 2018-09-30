@@ -56,6 +56,16 @@ class construct_Gamma_iterator:
         self.last = last_gamma * 2
         return last_gamma
 
+def sage_int_vector_to_tuple(vec):
+    return tuple((int(ri) for ri in vec))
+
+def sage_int_matrix_to_list_of_tuples(M):
+    # Converts a sage integer matrix to a list of rows,
+    # each row being a tuple of ints
+    # thus matrix(rs) would return M
+    rs = M.rows()
+    rs= list(sage_int_vector_to_tuple(r) for r in rs)
+    return rs
 
 class NFoldIP(SageObject):
     
@@ -76,6 +86,8 @@ class NFoldIP(SageObject):
                 self.NFoldLogging.disabled = True
         self.instancename = instancename
         self.filelog = open(self.instancename+'.log', 'w')
+        
+        
         self.solver = solver
         
         #CHECK THE VALIDITY OF GIVEN DATA
@@ -93,6 +105,20 @@ class NFoldIP(SageObject):
         self.t = D.ncols() #number of columns of A,D
         self.s = A.nrows() #number of rows of A
         self.r = D.nrows() #number of rows of D
+        
+        
+        self.fulllog = {}
+        self.fulllog["inst"] = dict(zip(("A","D","n","b","l","u","w","t","s","r","current_solution"),(A,D,n,b,l,u,w,self.t,self.s,self.r,current_solution)))
+        self.fulllog["inst"]["A"] = sage_int_matrix_to_list_of_tuples(self.fulllog["inst"]["A"])
+        self.fulllog["inst"]["D"] = sage_int_matrix_to_list_of_tuples(self.fulllog["inst"]["D"])
+        self.fulllog["inst"]["current_solution"] = [sage_int_vector_to_tuple(brick) for brick in current_solution]
+        self.fulllog["inst"]["l"] = [sage_int_vector_to_tuple(brick) for brick in l]
+        self.fulllog["inst"]["u"] = [sage_int_vector_to_tuple(brick) for brick in u]
+        self.fulllog["inst"]["w"] = [sage_int_vector_to_tuple(brick) for brick in w]
+        self.fulllog["dimension"] = n*self.t
+        self.fulllog["Delta"] = int(max((A.norm(1), D.norm(1))))
+        self.fulllog["iterations"] = {}
+        self.fulllog["instancename"] = str(instancename)
        
         #INITAL FEASIBLE SOLUTION 
         self.current_solution = current_solution #can be None
@@ -122,9 +148,10 @@ class NFoldIP(SageObject):
         elif graver_complexity =="approximate":
             self.graver_complexity = self.approximate_graver_complexity()
         elif type(graver_complexity) == int:
-            self.graver_complexity = graver_complexity
+            self.graver_complexity = int(graver_complexity)
         else:
             print ("not a valid argument for the graver_complexity keyword")
+        self.fulllog["graver_complexity"] = self.graver_complexity
         
 
 
@@ -361,6 +388,7 @@ class NFoldIP(SageObject):
         previous_time = 3600
         current_min = 0
         min_step = vector((0,)*(self.n*self.t))
+        fl = self.fulllog["iterations"][self.iteration]["gammas"]
         
         if self.gamma == "unit":
             Gamma = [1]
@@ -372,17 +400,18 @@ class NFoldIP(SageObject):
         
         for gamma in Gamma:
             self.NFoldLogging.warning('Finding good step for GAMMA: {}'.format(gamma))
-            good_step = self._find_good_step(gamma)
             start_time = time.time()
-            if (self.average_good_step_time == -1) or (gamma==1):
-                good_step = self._find_good_step(gamma)
-            else:
-                good_step = self._find_good_step(gamma, timelimit=min((3*self.max_good_step_time, 5)))
+            good_step = self._find_good_step(gamma)
+            #if (self.average_good_step_time == -1) or (gamma==1):
+            #    good_step = self._find_good_step(gamma)
+            #else:
+            #    good_step = self._find_good_step(gamma, timelimit=min((3*self.max_good_step_time, 5)))
                 #good_step = self._find_good_step(gamma)
             end_time = time.time()
             previous_time = end_time - start_time
             self.NFoldLogging.warning('Finding good step took {}'.format(previous_time))
             self.NFoldLogging.debug('good_step from find graverbest: {}'.format(good_step))
+            
             
             if self.w_vector.dot_product(good_step) >= 0:
                 break
@@ -397,6 +426,7 @@ class NFoldIP(SageObject):
                 self.NFoldLogging.warning('Updated average time {}'.format(self.average_good_step_time))
                 self.NFoldLogging.warning('Updated max time {}'.format(self.max_good_step_time))
             
+            old_gamma = gamma
             #look if it's possible to take bigger gamma for prolonging the good_step
             new_gamma = float('inf')
             
@@ -435,7 +465,13 @@ class NFoldIP(SageObject):
             self.find_good_step_counter += 1
             dot_product = self.w_vector.dot_product(gamma*good_step)
             self.NFoldLogging.info('for step length {} the best step has value {}'.format(gamma,dot_product))
-            self.filelog.write(str(self.current_obj + dot_product) + " ")              
+            self.filelog.write("("+str(self.current_obj + dot_product) + ","+str(previous_time)+") ")
+            
+            fl[old_gamma] = {}
+            fl[old_gamma]["g"] = sage_int_vector_to_tuple(good_step)
+            fl[old_gamma]["prolonged_gamma"] = int(gamma)
+            fl[old_gamma]["obj"] = int(self.current_obj + dot_product)
+            fl[old_gamma]["time"] = float(previous_time)
             
             if dot_product < current_min:
                 self.NFoldLogging.warning('For gamma {} the improvement is {}'.format(gamma,dot_product))
@@ -613,7 +649,7 @@ class NFoldIP(SageObject):
         # p = MixedIntegerLinearProgram(solver = "GLPK")
         # p.solver_parameter("timelimit", 60)
         
-        
+        self.fulllog["start_time"] = float(time.time())
         self.NFoldLogging.info('NATIVE SOLVER: ')
         
         #initial feasible solution
@@ -621,17 +657,25 @@ class NFoldIP(SageObject):
             self.current_solution = self.find_init_feasible_solution()
         current_obj = self.w_vector.dot_product(self._bricks_to_vector(self.current_solution))
         self.current_obj = current_obj
-        self.filelog.write(str(current_obj)+"\n")
+        self.filelog.write("("+str(current_obj)+",)\n")
         
+        self.iteration = 0
         
         if self.current_solution != None:
             while True:
+                self.iteration += 1
+                self.fulllog["iterations"][self.iteration] = {}
+                fl = self.fulllog["iterations"][self.iteration]
+                fl["x"] = [sage_int_vector_to_tuple(brick) for brick in self.current_solution]
+                fl["gammas"] = {}
                 start = time.time()
                 step = self.find_graverbest_step()
                 end = time.time()
+                fl["g"] = sage_int_vector_to_tuple(step)
+                fl["time"] = float(end-start)
                 self.NFoldLogging.warning('time of find_graver_best_step: {}'.format(end-start))
                 if (step == 0) or (self.w_vector.dot_product(step) > -1):
-                    self.filelog.write(str(self.w_vector.dot_product(self._bricks_to_vector(self.current_solution))))
+                    self.filelog.write("("+str(self.w_vector.dot_product(self._bricks_to_vector(self.current_solution)))+","+str(end-start)+")")
                     break
                 self.NFoldLogging.info('Previous solution: {}'.format(self.current_solution))
                 previous_obj = self.w_vector.dot_product(self._bricks_to_vector(self.current_solution))
@@ -654,6 +698,7 @@ class NFoldIP(SageObject):
                     m+=self.current_solution[i][j]*self.w[i][j]
             self.NFoldLogging.warning("Objective value from the Native solver: {}".format(m))
             self.native_solution = m
+            self.fulllog["end_time"] = float(time.time())
             
             
         else:
@@ -699,7 +744,7 @@ class NFoldIP(SageObject):
         
         #initialization of MILP
         nameOfMilp = "milp"
-        milp = MixedIntegerLinearProgram(maximization=False, solver = "GLPK")
+        milp = MixedIntegerLinearProgram(maximization=False, solver = "Gurobi")
         d = milp.new_variable(integer=True, nonnegative=True)
         
         #new format of self.b (only one long vector)
@@ -731,7 +776,11 @@ class NFoldIP(SageObject):
         self.NFoldLogging.info('I am going to solve the MILP instance by glpk.')
         #print milp.solve()
         #milp.solve()
+        start = time.time()
         self.glpk_solution = milp.solve()
+        end = time.time()
+        self.fulllog["glpk_solution"] = int(self.glpk_solution)
+        self.fulllog["glpk_solve_time"] = float(end-start)
         self.NFoldLogging.warning('Objective Value from GLPK: {}'.format(self.glpk_solution))
                    
     def glpk_solve(self):

@@ -1,5 +1,6 @@
 # Evaluating and Tuning n-Fold Integer Programming
 Supplementary material.
+For updates relating to the new submission, see the [jea/](./jea/) directory.
 
 ## Code
 

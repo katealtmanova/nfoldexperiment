@@ -17,12 +17,13 @@ from math import log
 import itertools
 import logging
 import time
+import GS_timing as timing
 import sys
 
 class construct_Gamma_iterator:
     '''iterator that yields numbers in Gamma'''
 
-    def __init__(self,u,l,n):
+    def __init__(self,u,l,n,base=2):
         
         #make the difference upper-lower bounds
         difference = []
@@ -42,7 +43,7 @@ class construct_Gamma_iterator:
         #counters and last item
         self.num_of_iterations = 0
         self.last = 1
-        
+        self.base = base
 
     def __iter__(self):
         return self
@@ -53,8 +54,8 @@ class construct_Gamma_iterator:
         
         if self.num_of_iterations > self.logarithm:
             raise StopIteration
-        self.last = last_gamma * 2
-        return last_gamma
+        self.last = last_gamma * self.base
+        return int(last_gamma)
 
 def sage_int_vector_to_tuple(vec):
     return tuple((int(ri) for ri in vec))
@@ -69,7 +70,8 @@ def sage_int_matrix_to_list_of_tuples(M):
 
 class NFoldIP(SageObject):
     
-    def __init__(self, A, D, n, b, l, u, w, verbose = logging.ERROR, graver_complexity = "exact", current_solution = None, experimental=False, instancename="instancename", gamma="logarithmic",solver="GLPK"):  
+    def __init__(self, A, D, n, b, l, u, w, verbose = logging.ERROR, graver_complexity = "exact", current_solution = None,
+                 experimental=False, instancename="instancename", gamma="log2",solver="GLPK", milp_timelimit=60, augip_timelimit=60):
         
         #SET LOGGING
         self.NFoldLogging = logging.getLogger(__name__)
@@ -108,17 +110,21 @@ class NFoldIP(SageObject):
         
         
         self.fulllog = {}
-        self.fulllog["inst"] = dict(zip(("A","D","n","b","l","u","w","t","s","r","current_solution"),(A,D,n,b,l,u,w,self.t,self.s,self.r,current_solution)))
+        self.fulllog["inst"] = dict(zip(("A","D","n","t","s","r","current_solution"),(A,D,n,self.t,self.s,self.r,current_solution)))
         self.fulllog["inst"]["A"] = sage_int_matrix_to_list_of_tuples(self.fulllog["inst"]["A"])
         self.fulllog["inst"]["D"] = sage_int_matrix_to_list_of_tuples(self.fulllog["inst"]["D"])
         self.fulllog["inst"]["current_solution"] = [sage_int_vector_to_tuple(brick) for brick in current_solution]
+        self.fulllog["inst"]["b"] = [sage_int_vector_to_tuple(brick) for brick in b]
         self.fulllog["inst"]["l"] = [sage_int_vector_to_tuple(brick) for brick in l]
         self.fulllog["inst"]["u"] = [sage_int_vector_to_tuple(brick) for brick in u]
         self.fulllog["inst"]["w"] = [sage_int_vector_to_tuple(brick) for brick in w]
-        self.fulllog["dimension"] = n*self.t
-        self.fulllog["Delta"] = int(max((A.norm(1), D.norm(1))))
+        self.fulllog["dimension"] = int(n*self.t)
+        self.fulllog["Delta"] = int(max((A.numpy().max(), D.numpy().max())))
         self.fulllog["iterations"] = {}
+        self.fulllog["gamma"] = str(gamma)
         self.fulllog["instancename"] = str(instancename)
+        self.fulllog["milp_timelimit"] = int(milp_timelimit)
+        self.fulllog["augip_timelimit"] = int(augip_timelimit)
        
         #INITAL FEASIBLE SOLUTION 
         self.current_solution = current_solution #can be None
@@ -151,7 +157,7 @@ class NFoldIP(SageObject):
             self.graver_complexity = int(graver_complexity)
         else:
             print ("not a valid argument for the graver_complexity keyword")
-        self.fulllog["graver_complexity"] = self.graver_complexity
+        self.fulllog["graver_complexity"] = int(self.graver_complexity)
         
 
 
@@ -159,7 +165,12 @@ class NFoldIP(SageObject):
             #CONSTRUCT ZE
             self.ZE = self._construct_ZE() #construct ZE 
             self.experimental = False
-            
+        
+        self.augip_initialized = False
+        
+        # TIMELIMITS
+        self.milp_timelimit = milp_timelimit
+        self.augip_timelimit = augip_timelimit
 
         #LOGGING  PROPERTIES
         self.graver_best_counter = 0		
@@ -170,7 +181,6 @@ class NFoldIP(SageObject):
         #VARS FOR SOLUTION
         self.native_solution = None
         self.glpk_solution = None
-        
         
     def _check_validity_of_data(self,A,D,n,b,l,u,w,current_solution):
         "Check if the sizes and bounds are valid."
@@ -395,25 +405,30 @@ class NFoldIP(SageObject):
         elif self.gamma == "best" and (self.experimental in ["ng1", "nginfty"]):
             Gamma = self.construct_best_Gamma()
         else:
+            ddd = {"log2":2, "log5":5, "log10":10}
             # logarithmic Gamma = default
-            Gamma = construct_Gamma_iterator(self.u, self.l, self.n)        
+            Gamma = construct_Gamma_iterator(self.u, self.l, self.n, base=ddd[self.gamma])
         
         for gamma in Gamma:
             self.NFoldLogging.warning('Finding good step for GAMMA: {}'.format(gamma))
-            start_time = time.time()
+            fl[gamma] = {}
+            start_time = timing.micros()
             good_step = self._find_good_step(gamma)
             #if (self.average_good_step_time == -1) or (gamma==1):
             #    good_step = self._find_good_step(gamma)
             #else:
             #    good_step = self._find_good_step(gamma, timelimit=min((3*self.max_good_step_time, 5)))
                 #good_step = self._find_good_step(gamma)
-            end_time = time.time()
-            previous_time = end_time - start_time
+            end_time = timing.micros()
+            previous_time = float(end_time - start_time) / 10**6 # convert us -> s
             self.NFoldLogging.warning('Finding good step took {}'.format(previous_time))
             self.NFoldLogging.debug('good_step from find graverbest: {}'.format(good_step))
             
+            fl[gamma]["g"] = sage_int_vector_to_tuple(good_step)
+            fl[gamma]["obj"] = int(self.current_obj + self.w_vector.dot_product(gamma*good_step))
             
             if self.w_vector.dot_product(good_step) >= 0:
+                fl[gamma]["augmenting"] = False
                 break
             else:
                 self.feasible_good_steps += 1
@@ -467,11 +482,9 @@ class NFoldIP(SageObject):
             self.NFoldLogging.info('for step length {} the best step has value {}'.format(gamma,dot_product))
             self.filelog.write("("+str(self.current_obj + dot_product) + ","+str(previous_time)+") ")
             
-            fl[old_gamma] = {}
-            fl[old_gamma]["g"] = sage_int_vector_to_tuple(good_step)
+            fl[old_gamma]["augmenting"] = True
             fl[old_gamma]["prolonged_gamma"] = int(gamma)
             fl[old_gamma]["obj"] = int(self.current_obj + dot_product)
-            fl[old_gamma]["time"] = float(previous_time)
             
             if dot_product < current_min:
                 self.NFoldLogging.warning('For gamma {} the improvement is {}'.format(gamma,dot_product))
@@ -500,8 +513,8 @@ class NFoldIP(SageObject):
                 for k in range(1,gc+1):
                     gamma_1 = floor((uu-xx)/k)
                     gamma_2 = floor((xx-ll)/k)
-                    Gamma.add(gamma_1)
-                    Gamma.add(gamma_2)
+                    Gamma.add(int(gamma_1))
+                    Gamma.add(int(gamma_2))
         Gamma = list(Gamma)
         Gamma.sort()
         Gamma.remove(0)
@@ -562,49 +575,75 @@ class NFoldIP(SageObject):
     
         return hh
         
-    def _find_good_step_experimental_ng(self,gamma,timelimit=None):
+    def _find_good_step_experimental_ng(self,gamma,timelimit=10):
         # norm can be "infty" or "1"; we constraint the solution to be bounded by self.graver_complexity of this norm
         # l_\infty
         #p = MixedIntegerLinearProgram(maximization=False, solver = solver)
-        p = MixedIntegerLinearProgram(maximization=False, solver = self.solver)
-        x = p.new_variable(integer=True, nonnegative=False)
-        for i in range(self.n):
-            for j in range(self.t):
-                ub = floor( min(self.graver_complexity*gamma, self.u[i][j] - self.current_solution[i][j]) / gamma)
-                lb = ceil( max(-self.graver_complexity*gamma, self.l[i][j] - self.current_solution[i][j]) / gamma)
-                # print "setting lb/ub i,j", i,j, "to", lb, ub
-                p.set_max(x[i,j],ub)
-                p.set_min(x[i,j],lb)
-        
-        An = self.create_An_matrix()
-        
-        for row in An:
-            p.add_constraint(sum((row[i*self.t + j]*x[i,j] for j in range(self.t) for i in range(self.n))) == 0)
-        
-        if self.experimental=="ng1":
-            pos = p.new_variable(integer=True, nonnegative=True)
-            neg = p.new_variable(integer=True, nonnegative=True)
+        if not self.augip_initialized:
+            start = timing.micros()
+            p = MixedIntegerLinearProgram(maximization=False, solver = self.solver)
+            x = p.new_variable(integer=True, nonnegative=False)
             for i in range(self.n):
                 for j in range(self.t):
-                    p.add_constraint(x[i,j] == pos[i,j] - neg[i,j])
-            p.add_constraint( sum(pos[i,j] + neg[i,j] for i in range(self.n) for j in range(self.t)) <= self.graver_complexity )
+                    ub = floor( min(self.graver_complexity*gamma, self.u[i][j] - self.current_solution[i][j]) / gamma)
+                    lb = ceil( max(-self.graver_complexity*gamma, self.l[i][j] - self.current_solution[i][j]) / gamma)
+                    # print "setting lb/ub i,j", i,j, "to", lb, ub
+                    p.set_max(x[i,j],ub)
+                    p.set_min(x[i,j],lb)
+            
+            An = self.create_An_matrix()
+            
+            for row in An:
+                p.add_constraint(sum((row[i*self.t + j]*x[i,j] for j in range(self.t) for i in range(self.n))) == 0)
+            
+            if self.experimental=="ng1":
+                pos = p.new_variable(integer=True, nonnegative=True)
+                neg = p.new_variable(integer=True, nonnegative=True)
+                for i in range(self.n):
+                    for j in range(self.t):
+                        p.add_constraint(x[i,j] == pos[i,j] - neg[i,j])
+                p.add_constraint( sum(pos[i,j] + neg[i,j] for i in range(self.n) for j in range(self.t)) <= self.graver_complexity )
+            
+            
+            # minimize the objective
+            f = 0
+            for i in range(self.n):
+                for j in range(self.t):
+                    f += self.w[i][j]*x[i,j]
+            p.set_objective(f)
+            self.augip = {}
+            self.augip["p"] = p
+            self.augip["x"] = x
+            end = timing.micros()
+            self.fulllog["augip_init_time"] = float( (end-start)/10**6)
+            self.augip_initialized = True
+        else:
+            p = self.augip["p"]
+            x = self.augip["x"]
+            # Modify bounds according to current solution and gamma
+            for i in range(self.n):
+                for j in range(self.t):
+                    ub = floor( min(self.graver_complexity*gamma, self.u[i][j] - self.current_solution[i][j]) / gamma)
+                    lb = ceil( max(-self.graver_complexity*gamma, self.l[i][j] - self.current_solution[i][j]) / gamma)
+                    # print "setting lb/ub i,j", i,j, "to", lb, ub
+                    p.set_max(x[i,j],ub)
+                    p.set_min(x[i,j],lb)
         
-        
-        # minimize the objective
-        f = 0
-        for i in range(self.n):
-            for j in range(self.t):
-                f += self.w[i][j]*x[i,j]
-        p.set_objective(f)
-        
-        #return p
         
         if timelimit and self.solver != "Coin":
             p.solver_parameter("timelimit", timelimit)
         
+        start = timing.micros()
+        exception = False
         try:
             p.solve()
         except MIPSolverException:
+            exception = True
+        end = timing.micros()
+        self.fulllog["iterations"][self.iteration]["gammas"][gamma]["solve_time"] = float((end-start)/10**6)
+        self.fulllog["iterations"][self.iteration]["gammas"][gamma]["solve_success"] = True
+        if exception:
+            self.fulllog["iterations"][self.iteration]["gammas"][gamma]["solve_success"] = False
             return vector((0,)*(self.n*self.t))
         if p.get_objective_value() > -1:
             return vector((0,)*(self.n*self.t))
@@ -649,7 +688,7 @@ class NFoldIP(SageObject):
         # p = MixedIntegerLinearProgram(solver = "GLPK")
         # p.solver_parameter("timelimit", 60)
         
-        self.fulllog["start_time"] = float(time.time())
+        self.fulllog["start_time"] = float(timing.micros()/10**6)
         self.NFoldLogging.info('NATIVE SOLVER: ')
         
         #initial feasible solution
@@ -659,7 +698,7 @@ class NFoldIP(SageObject):
         self.current_obj = current_obj
         self.filelog.write("("+str(current_obj)+",)\n")
         
-        self.iteration = 0
+        self.iteration = int(0)
         
         if self.current_solution != None:
             while True:
@@ -668,11 +707,11 @@ class NFoldIP(SageObject):
                 fl = self.fulllog["iterations"][self.iteration]
                 fl["x"] = [sage_int_vector_to_tuple(brick) for brick in self.current_solution]
                 fl["gammas"] = {}
-                start = time.time()
+                start = timing.micros()
                 step = self.find_graverbest_step()
-                end = time.time()
+                end = timing.micros()
                 fl["g"] = sage_int_vector_to_tuple(step)
-                fl["time"] = float(end-start)
+                fl["time"] = float( (end-start)/10**6)
                 self.NFoldLogging.warning('time of find_graver_best_step: {}'.format(end-start))
                 if (step == 0) or (self.w_vector.dot_product(step) > -1):
                     self.filelog.write("("+str(self.w_vector.dot_product(self._bricks_to_vector(self.current_solution)))+","+str(end-start)+")")
@@ -698,7 +737,8 @@ class NFoldIP(SageObject):
                     m+=self.current_solution[i][j]*self.w[i][j]
             self.NFoldLogging.warning("Objective value from the Native solver: {}".format(m))
             self.native_solution = m
-            self.fulllog["end_time"] = float(time.time())
+            self.fulllog["end_time"] = float(timing.micros()/10**6)
+            self.fulllog["native_solution"] = int(self.native_solution)
             
             
         else:
@@ -763,7 +803,7 @@ class NFoldIP(SageObject):
         #set the objective function, which is w*d
         ww = vector(itertools.chain.from_iterable(self.w))  
         milp.set_objective(sum(ww[i]*d[i] for i in range(self.n*self.t)))
-            
+        milp.solver_parameter("timelimit", self.milp_timelimit)
         #how does the MILP looks like
         #milp.show()
         
@@ -773,24 +813,34 @@ class NFoldIP(SageObject):
         """
         Solves given MILP instance.
         """    
-        self.NFoldLogging.info('I am going to solve the MILP instance by glpk.')
+        
         #print milp.solve()
         #milp.solve()
-        start = time.time()
+        self.NFoldLogging.info('Starting solve...')
+        self.glpk_start = timing.micros()
         self.glpk_solution = milp.solve()
-        end = time.time()
-        self.fulllog["glpk_solution"] = int(self.glpk_solution)
-        self.fulllog["glpk_solve_time"] = float(end-start)
+        end = timing.micros()
+        self.NFoldLogging.info('Finished. Solve took time ' + str(end-self.glpk_start) + 'us.')
+
         self.NFoldLogging.warning('Objective Value from GLPK: {}'.format(self.glpk_solution))
                    
     def glpk_solve(self):
         """
         Creates and solves glpk instance
         """
+        self.NFoldLogging.info('I am going to solve the MILP instance by glpk.')
+        self.NFoldLogging.info('Constructing the instance now...')
+        start = timing.micros()
         try:
             self.glpk_solve_instance(self.milp_instance())
+            self.fulllog["glpk_solution"] = int(self.glpk_solution)
         except MIPSolverException:
             print "GLPK has not found any solution"
+            self.fulllog["glpk_solution"] = False
+        end = timing.micros()
+        self.fulllog["glpk_solve_time"] = float((end-self.glpk_start)/10**6)
+        self.NFoldLogging.info('Construct and solve took time ' + str(end-start) + 'us.')
+        self.fulllog["glpk_construct_and_solve"] = float((end-start)/10**6)
     
     
     def solve(self,solver):

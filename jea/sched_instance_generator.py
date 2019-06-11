@@ -64,32 +64,30 @@ def gen_sched_instance(job_lengths, job_weights, smallest, largest, m, slack_r=0
             break
         else:
             jobs[j] += 1
+    job_vector = tuple()
+    for l in job_lengths:
+        job_vector += (l,)
             
     ##### NOW generate n-fold instance        
     
     r = len(job_lengths)
-    t = 2*r + 1
-    A = job_lengths + [0]*r + [1]
+    t = r + 1
+    A = job_lengths + [1]
     D = []
     for i in range(r):
-        row = [0]*i + [1] + [0]*(r-i-1)
-        row = row + row + [0]
+        row = [0]*i + [1] + [0]*(r-i)
         D.append(row)
         
-    l = [(0,)*t]*m
-    u = [tuple(jobs.values())*2 + (M[i],) for i in range(len(M))]
-    if obj == "total_length":
-        w = [(0,)*r + tuple(jobs) + (0,)]*m
-    elif obj == "total_jobs":
-        w = [(0,)*r + (1,)*len(jobs) + (0,)]*m
-    elif obj == "order":
-        w = [(0,)*r + tuple(( j*(i+1) for j in jobs.keys())) + (0,) for i in range(len(M))]        
-    b = [tuple(jobs.values())] + [(M[i],) for i in range(len(M))]
-    x = [(0,)*r + tuple(jobs.values()) + (M[0],)] + [(0,)*2*r + (M[i],) for i in range(1,len(M))]
+    l = [(0,)*t]*(m+1)
+    u = [job_vector + (total_size,)] + [job_vector + (M[i],) for i in range(m)]
+    if obj == "total_jobs":
+        w = [(1,)*r+(0,)] + [(0,)*t]*m
+    b = [job_vector] + [(total_size,)] + [(M[i],) for i in range(len(M))]
+    x = [job_vector + (0,)] + [(0,)*r + (M[i],) for i in range(len(M))]
     
     l = [vector(ll) for ll in l]
     u = [vector(uu) for uu in u]
     w = [vector(ww) for ww in w]
     x = [vector(xx) for xx in x]
     
-    return matrix(A), matrix(D), m, b, l, u, w, x, inst_name
+    return matrix(A), matrix(D), m+1, b, l, u, w, x, inst_name

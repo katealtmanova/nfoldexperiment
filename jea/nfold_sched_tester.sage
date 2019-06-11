@@ -95,10 +95,14 @@ def gen_sched_instances():
                     inst["largest"] = int(Delta**(2.5))
                     inst["obj"] = "total_jobs"
                     inst["slack_r"] = sl
+                    inst["number_job_types"] = t
                     for m in args.machines:
                         inst_m = copy.deepcopy(inst)
                         inst_m["m"] = m
                         instances.append(inst_m)
+    def m_plus_t(inst):
+        return inst["m"] + inst["number_job_types"]
+    instances.sort(key=m_plus_t)
     return instances
 
 
@@ -171,7 +175,8 @@ def run_tests(inst):
 
 
 if args.instance_type == "sched":
-    for inst in sched_instances: # -> FIXME instances when we are ready to go
+    for (i,inst) in enumerate(sched_instances): # -> FIXME instances when we are ready to go
+        print("####### Testing instance",i,"/",len(sched_instances))
         ip_instance = gen_sched_instance(inst["job_lengths"], inst["job_weights"], inst["smallest"], inst["largest"], inst["m"], slack_r=inst["slack_r"], obj=inst["obj"])
         run_tests(ip_instance)
 elif args.instance_type == "cs":

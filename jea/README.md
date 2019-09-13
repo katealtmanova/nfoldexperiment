@@ -36,3 +36,8 @@ Those represent the quality of augmentations found for various step lengths with
 Specifically, we observe that typically, the best augmenting step is found neither for the shortest nor the longest step length, which accounts for the curve first having a "dip" in the middle, when viewed in the context of one outer loop iteration.
 
 Some other spikes and fluctuations can be seen in Figures 8 and 9, which come from nondeterminism inherent in the algorithms and randomness in the data set.
+
+## Acknowledgements
+
+Many thanks to Julian Chun from the [RCR initiative of JEA](https://jea.acm.org/rcr_initiative.cfm), who helped verify
+the reproducibility of our results and provided valuable feedback.
